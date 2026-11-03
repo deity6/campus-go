@@ -504,6 +504,14 @@ input { user-select: text; }
   transition: opacity .16s var(--ease), transform .16s var(--ease);
 }
 .name-privacy:hover .name-shield { opacity: 1; transform: none; }
+.name-privacy.editing {
+  cursor: text;
+  background: rgba(37, 99, 235, .07);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .10);
+}
+.name-privacy.editing::after { transform: scaleX(1); }
+.name-privacy.editing .name-shield { opacity: 0; }
+.name-text { outline: none; }
 .name-char { display: inline-block; will-change: transform, opacity, filter; }
 .name-char.leaving {
   animation: charScatter .34s var(--ease) forwards;
@@ -872,6 +880,28 @@ input { user-select: text; }
     0 0 0 3px rgba(37, 99, 235, .12);
 }
 .field input::placeholder { color: var(--tx-3); }
+.field select {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: #fbfcfe;
+  color: var(--tx-1);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease),
+              box-shadow var(--dur) var(--ease),
+              background var(--dur) var(--ease);
+}
+.field select:hover { border-color: #d3dbe8; }
+.field select:focus {
+  background: #fff;
+  border-color: #9dbcfa;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+}
 .field-hint { font-size: 10.5px; color: var(--tx-3); line-height: 1.55; }
 
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

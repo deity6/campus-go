@@ -158,6 +158,7 @@ func (s *Service) configSnapshot() map[string]any {
 		"failure_threshold":   2,
 		"privacy_name_level":  cfg.PrivacyNameLevel,
 		"privacy_net_masked":  cfg.PrivacyNetMasked,
+		"custom_name":         cfg.CustomName,
 		"tour_done":           cfg.TourDone,
 	}
 }
@@ -221,6 +222,11 @@ func (s *Service) saveConfig(params map[string]any) map[string]any {
 	}
 	if v, ok := params["privacy_net_masked"].(bool); ok {
 		cfg.PrivacyNetMasked = v
+	}
+	if v, ok := params["custom_name"].(string); ok {
+		// 称呼是界面里的一小行字，超长会破坏概览排版；给个宽松上限就够。
+		runes := []rune(strings.TrimSpace(v))
+		cfg.CustomName = string(runes[:minInt(len(runes), 24)])
 	}
 
 	if err := config.Save(cfg); err != nil {
@@ -370,6 +376,13 @@ func toInt(v any) (int, bool) {
 		return int(i), err == nil
 	}
 	return 0, false
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func clampInt(v, lo, hi int) int {

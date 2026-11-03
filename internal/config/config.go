@@ -47,8 +47,10 @@ type Config struct {
 	// 隐私脱敏。这些偏好会被记住（冷处理），重启后仍然生效。
 	// NameLevel: 0=保留姓+同学，1=隐藏姓，2=连“同学”身份也替换掉。
 	// NetMasked: IP / MAC / 网关等信息默认打码，用户可临时查看。
-	PrivacyNameLevel int  `json:"privacy_name_level"`
-	PrivacyNetMasked bool `json:"privacy_net_masked"`
+	// CustomName 是称呼区的小彩蛋：长按后可改成任意文案，空值恢复默认。
+	PrivacyNameLevel int    `json:"privacy_name_level"`
+	PrivacyNetMasked bool   `json:"privacy_net_masked"`
+	CustomName       string `json:"custom_name"`
 
 	// 界面：使用引导是否已看过。
 	// 首次为 false，播完置 true；用户在设置里取消勾选会重新变 false，
@@ -59,7 +61,7 @@ type Config struct {
 // Default 返回一份合理的默认配置。
 func Default() Config {
 	return Config{
-		Gateway:              "10.0.0.1",
+		Gateway:              "10.0.253.14",
 		EthGW:                "192.168.5.1",
 		WatchStartHour:       0,
 		WatchEndHour:         8,

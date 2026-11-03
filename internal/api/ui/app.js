@@ -42,8 +42,13 @@ const privacy = {
   ready: false,
   nameAnimating: false,
   baseName: "",       // 后端返回的「姓+同学」
+  customName: "",     // 长按称呼后保存的自定义文案；空值走默认
 };
 let demoNameActive = false;
+let nameEditing = false;
+let namePressTimer = null;
+let nameEditSuppressedClick = false;
+const greetEl = document.getElementById("heroGreet");
 
 const SHIELD_ON = '<path d="M12 3.5 19 6v5.5c0 4.6-3 7.6-7 9-4-1.4-7-4.4-7-9V6l7-2.5Z" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.5 10" stroke-linecap="round" stroke-linejoin="round"/>';
 const EYE_OFF = '<path d="M4 4l16 16" stroke-linecap="round"/><path d="M9.9 5.9A9.6 9.6 0 0 1 12 5.5c6.2 0 9.8 6.5 9.8 6.5a17.4 17.4 0 0 1-3.2 3.9M6.2 7.9A16.8 16.8 0 0 0 2.2 12s3.6 6.5 9.8 6.5c1.2 0 2.3-.2 3.3-.6" stroke-linecap="round"/><path d="M9.9 10.2a3.2 3.2 0 0 0 4.2 4.2" stroke-linecap="round"/>';
@@ -165,6 +170,9 @@ document.getElementById("switchPrivacyNet").addEventListener("click", () => {
 /* ---------------- 姓名脱敏交互 ---------------- */
 
 function nameDisplayParts(level, base) {
+  if (privacy.customName) {
+    return [{ text: privacy.customName, kind: "custom" }];
+  }
   const surname = String(base || "").replace(/同学$/, "") || "某";
   if (level === 0) {
     return [{ text: surname, kind: "name" }, { text: "同学", kind: "role" }];
@@ -177,15 +185,15 @@ function nameDisplayParts(level, base) {
 
 function renderName({ animate = false } = {}) {
   const greet = document.getElementById("heroGreet");
-  if (!greet || privacy.nameAnimating) return;
-  const base = demoNameActive ? "青同学" : privacy.baseName;
+  if (!greet || privacy.nameAnimating || nameEditing) return;
+  const base = demoNameActive ? "青同学" : (privacy.customName || privacy.baseName);
   if (!base) {
     greet.dataset.line = "";
     greet.classList.remove("enter");
     greet.innerHTML = "";
     return;
   }
-  const line = `${greetingWord()}|${base}|${privacy.nameLevel}|${demoNameActive ? "demo" : "real"}`;
+  const line = `${greetingWord()}|${base}|${privacy.nameLevel}|${privacy.customName ? "custom" : demoNameActive ? "demo" : "real"}`;
   greet.dataset.line = line;
 
   const parts = nameDisplayParts(privacy.nameLevel, base);
@@ -196,7 +204,7 @@ function renderName({ animate = false } = {}) {
   ).join("");
   greet.innerHTML =
     `${escapeHtml(greetingWord())}，<button type="button" class="name-privacy" ` +
-    `aria-label="切换姓名脱敏">${chars}` +
+    `aria-label="切换姓名脱敏"><span class="name-text">${chars}</span>` +
     `<svg class="name-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">` +
     `<path d="M12 3.5 19 6v5.5c0 4.6-3 7.6-7 9-4-1.4-7-4.4-7-9V6l7-2.5Z" stroke-linejoin="round"/>` +
     `<path d="m9 12 2.2 2.2L15.5 10" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
@@ -212,12 +220,108 @@ function renderName({ animate = false } = {}) {
 }
 
 function cycleNamePrivacy() {
-  if (privacy.nameAnimating) return;
+  if (privacy.nameAnimating || nameEditing || nameEditSuppressedClick) {
+    nameEditSuppressedClick = false;
+    return;
+  }
+  // 自定义文案时，点击不再改回默认；长按可以继续编辑或清空。
+  if (privacy.customName) return;
   const next = (privacy.nameLevel + 1) % 3;
   privacy.nameLevel = next;
   animateNameChange();
   updatePrivacySwitches();
   savePrivacy();
+}
+
+/* 长按称呼进入就地编辑：可改姓、改“同学”、改成任意短文案。 */
+greetEl?.addEventListener("pointerdown", (ev) => {
+  if (nameEditing || !ev.isPrimary || ev.button !== 0) return;
+  const btn = ev.target.closest(".name-privacy");
+  if (!btn) return;
+  namePressTimer = setTimeout(() => {
+    namePressTimer = null;
+    nameEditSuppressedClick = true;
+    beginNameEdit(btn);
+  }, 450);
+});
+["pointerup", "pointercancel", "pointerleave"].forEach((type) => {
+  greetEl?.addEventListener(type, () => {
+    if (namePressTimer) {
+      clearTimeout(namePressTimer);
+      namePressTimer = null;
+    }
+  });
+});
+greetEl?.addEventListener("contextmenu", (ev) => {
+  if (ev.target.closest(".name-privacy")) ev.preventDefault();
+});
+
+function beginNameEdit(btn) {
+  const textEl = btn.querySelector(".name-text");
+  if (!textEl || nameEditing) return;
+  nameEditing = true;
+  btn.classList.add("editing");
+  textEl.setAttribute("contenteditable", "true");
+  textEl.setAttribute("spellcheck", "false");
+  textEl.dataset.original = textEl.textContent;
+  textEl.focus();
+  const range = document.createRange();
+  range.selectNodeContents(textEl);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  textEl.addEventListener("blur", commitNameEdit);
+  textEl.addEventListener("keydown", onNameEditKey);
+}
+
+function onNameEditKey(ev) {
+  if (ev.key === "Enter") {
+    ev.preventDefault();
+    commitNameEdit();
+  }
+  if (ev.key === "Escape") {
+    ev.preventDefault();
+    cancelNameEdit();
+  }
+}
+
+function commitNameEdit() {
+  const textEl = document.querySelector(".name-privacy .name-text");
+  if (!textEl) return;
+  const next = textEl.textContent.trim();
+  privacy.customName = next;
+  finishNameEdit();
+  saveCustomName();
+  renderName({ animate: true });
+}
+
+function cancelNameEdit() {
+  finishNameEdit();
+  renderName();
+}
+
+function finishNameEdit() {
+  const textEl = document.querySelector(".name-privacy .name-text");
+  const btn = document.querySelector(".name-privacy");
+  if (textEl) {
+    textEl.removeEventListener("blur", commitNameEdit);
+    textEl.removeEventListener("keydown", onNameEditKey);
+    textEl.removeAttribute("contenteditable");
+  }
+  btn?.classList.remove("editing");
+  nameEditing = false;
+}
+
+async function saveCustomName() {
+  try {
+    await api("/api/config", {
+      method: "POST",
+      body: { custom_name: privacy.customName },
+    });
+    if (lastState && lastState.config) lastState.config.custom_name = privacy.customName;
+  } catch (e) {
+    toast(e.message, "err");
+  }
 }
 
 function animateNameChange() {
@@ -370,6 +474,40 @@ window.addEventListener("hashchange", () => {
 
 /* ---------------- 状态渲染 ---------------- */
 
+// 目前只内置 WZUT 一个默认网关；其他学校走自定义输入。
+const GATEWAY_PRESETS = [
+  { id: "wzut", label: "WZUT 默认网关", value: "10.0.253.14" },
+  { id: "custom", label: "自定义网关", value: "" },
+];
+
+function syncGatewaySelect(value) {
+  const sel = document.getElementById("selGateway");
+  if (!sel) return;
+  const match = GATEWAY_PRESETS.find((p) => p.value && value === p.value);
+  sel.value = match ? match.id : "custom";
+}
+
+(function buildGatewaySelect() {
+  const sel = document.getElementById("selGateway");
+  if (!sel) return;
+  GATEWAY_PRESETS.forEach((p) => sel.add(new Option(p.label, p.id)));
+  sel.value = "custom";
+  sel.addEventListener("change", () => {
+    const inp = document.getElementById("inpGateway");
+    const preset = GATEWAY_PRESETS.find((p) => p.id === sel.value);
+    if (preset?.value) {
+      inp.value = preset.value;
+      inp.dataset.touched = "1";
+    }
+    inp.focus();
+  });
+})();
+
+document.getElementById("inpGateway").addEventListener("input", (e) => {
+  e.target.dataset.touched = "1";
+  syncGatewaySelect(e.target.value.trim());
+});
+
 const PHASE_TEXT = {
   online: "已连接",
   offline: "未连接",
@@ -442,6 +580,7 @@ function renderState(s) {
   if (!privacy.ready && cfg.privacy_name_level !== undefined) {
     privacy.nameLevel = cfg.privacy_name_level || 0;
     privacy.netMasked = cfg.privacy_net_masked !== false;
+    privacy.customName = cfg.custom_name || "";
     privacy.ready = true;
     updatePrivacySwitches();
     syncPrivacyEyes();
@@ -547,6 +686,7 @@ function renderState(s) {
     const ai = document.getElementById("inpAccount");
     const pi = document.getElementById("inpPassword");
     if (!gi.value && cfg.gateway) gi.value = cfg.gateway;
+    syncGatewaySelect(gi.value.trim());
     if (!ai.value && cfg.account) ai.value = cfg.account;
     // 密码也回填：用户要求「保存后能看到、能改」。
     // 只在没被编辑过时填一次，避免 2 秒轮询把正在输入的内容冲掉。
