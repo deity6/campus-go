@@ -312,8 +312,39 @@ input { user-select: text; }
   line-height: 1.6;
 }
 
+/* 接入方式单独展示：不挤进“可以正常上网”那句说明里。 */
+.hero-access {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  font-size: 12px; font-weight: 650;
+  letter-spacing: .1px;
+  white-space: nowrap;
+}
+.hero-access .access-icon { width: 14px; height: 14px; flex: 0 0 auto; }
+.hero-access.wifi {
+  color: #1c66f0;
+  border-color: rgba(37, 99, 235, .16);
+  background: linear-gradient(100deg, rgba(59, 123, 246, .10), rgba(37, 99, 235, .05));
+}
+.hero-access.wired {
+  color: #0b7a5b;
+  border-color: rgba(15, 164, 122, .16);
+  background: linear-gradient(100deg, rgba(15, 164, 122, .10), rgba(15, 164, 122, .05));
+}
+.hero-access.unknown {
+  color: var(--tx-2);
+  border-color: var(--line);
+  background: var(--bg-2);
+}
+
 .hero-ring { position: relative; width: 88px; height: 88px; flex: 0 0 auto; }
 .hero-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.hero-ring[data-state="online"] { animation: ringGlow 2.6s ease-in-out infinite; }
+.hero-ring[data-state="offline"] { animation: ringGlowOffline 2.6s ease-in-out infinite; }
+.hero-ring[data-state="working"] { animation: ringGlowWorking 1.4s ease-in-out infinite; }
 .ring-bg { fill: none; stroke: var(--bg-3); stroke-width: 5; }
 .ring-fg {
   fill: none; stroke: var(--tx-3); stroke-width: 5;
@@ -325,9 +356,48 @@ input { user-select: text; }
 .ring-label {
   position: absolute; inset: 0;
   display: grid; place-items: center;
-  font-size: 10px; color: var(--tx-3);
+  font-size: 9.5px; font-weight: 650;
+  color: var(--tx-3);
   text-align: center; line-height: 1.25;
-  letter-spacing: .4px;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+.ring-label[data-state="online"] {
+  background: linear-gradient(90deg, #0b9e77, #14b8a6, #2563eb, #0b9e77);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ringTextFlow 2.8s linear infinite;
+}
+.ring-label[data-state="offline"] { color: #b3373e; }
+.ring-label[data-state="working"] {
+  color: #b36b1d;
+  animation: ringBreathe 1.4s ease-in-out infinite;
+}
+@keyframes ringTextFlow {
+  from { background-position: 0% 50%; }
+  to   { background-position: 220% 50%; }
+}
+@keyframes ringBreathe { 50% { opacity: .45; } }
+@keyframes ringGlow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(15, 164, 122, 0)); }
+  50% { filter: drop-shadow(0 0 8px rgba(15, 164, 122, .16)); }
+}
+@keyframes ringGlowOffline {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(220, 75, 82, 0)); }
+  50% { filter: drop-shadow(0 0 8px rgba(220, 75, 82, .14)); }
+}
+@keyframes ringGlowWorking {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(217, 131, 36, 0)); }
+  50% { filter: drop-shadow(0 0 8px rgba(217, 131, 36, .16)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-ring[data-state="online"],
+  .hero-ring[data-state="offline"],
+  .hero-ring[data-state="working"],
+  .ring-label[data-state="online"],
+  .ring-label[data-state="working"] { animation: none; }
 }
 
 /* ---------- 按钮：立体感 ---------- */
@@ -348,8 +418,15 @@ input { user-select: text; }
               transform .06s var(--ease);
 }
 .btn:active { transform: translateY(1px); }
-.btn:disabled { opacity: .5; pointer-events: none; }
+.btn:disabled { opacity: .55; pointer-events: none; }
 .btn svg { width: 15px; height: 15px; }
+.btn-spinner {
+  width: 14px; height: 14px;
+  animation: spin .9s linear infinite;
+}
+.btn.is-loading { pointer-events: none; }
+.btn.is-loading .btn-spinner { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* 主按钮：纯净蓝 + 柔和投影。
    原来那版有深色描边 + 顶部高光，是"塑料拟物"的做法，
@@ -724,17 +801,14 @@ input { user-select: text; }
   box-shadow: 0 2px 7px rgba(16, 24, 40, .16), 0 0 0 4px rgba(16, 185, 129, .13);
 }
 .tl-now {
-  position: absolute; top: 17px; bottom: 22px;
-  width: 1px; background: rgba(37, 99, 235, .42);
+  position: absolute; top: 12px; bottom: auto;
+  width: 12px; height: 7px;
+  background: #4f7df3;
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  transform: translateX(-50%);
+  filter: drop-shadow(0 1px 2px rgba(37, 99, 235, .28));
   left: 50%;
   pointer-events: none;
-}
-.tl-now::after {
-  content: "";
-  position: absolute; top: -3px; left: -2.5px;
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, .10);
 }
 .tl-ticks {
   position: absolute; left: 0; right: 0; top: 47px;

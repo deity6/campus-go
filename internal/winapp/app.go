@@ -31,7 +31,7 @@ type Options struct {
 	// 前端资源被合成一个自包含文档，因此不需要本地服务、不需要端口。
 	HTML string
 	// OnMessage 处理页面发来的消息，返回要执行的 JS（空串表示不回）。
-	OnMessage func(msg string) string
+	OnMessage   func(msg string) string
 	Width       int
 	Height      int
 	MinWidth    int
@@ -66,6 +66,9 @@ type App struct {
 	status    Status
 	statusTip string
 
+	// EvalAsync 通过 UI 线程队列执行脚本，避免后台 goroutine 直接触碰 COM。
+	evalCh chan string
+
 	menuCmd int
 }
 
@@ -84,6 +87,7 @@ const (
 const (
 	wmApplyStatus = WM_APP + 3
 	wmShowFromAny = WM_APP + 4
+	wmEval        = WM_APP + 5
 )
 
 const windowClass = "CampusAutoLoginWnd"
@@ -112,7 +116,11 @@ func New(opts Options) *App {
 
 	// CSS 像素 -> 物理像素
 	scale := systemScale()
-	a := &App{opts: opts, status: StatusSuspend, statusTip: "正在启动…"}
+	a := &App{
+		opts:   opts,
+		status: StatusSuspend, statusTip: "正在启动…",
+		evalCh: make(chan string, 256),
+	}
 	a.pxW = scalei(opts.Width, scale)
 	a.pxH = scalei(opts.Height, scale)
 	a.pxMinW = scalei(opts.MinWidth, scale)
@@ -227,9 +235,13 @@ func (a *App) Run() error {
 		}
 		if a.opts.OnMessage != nil {
 			a.chromium.MessageCallback = func(msg string) {
-				if js := a.opts.OnMessage(msg); js != "" {
-					a.chromium.Eval(js)
-				}
+				// 页面消息可能触发网络探测、登录、注销，不能占用 UI 线程；
+				// 否则点击动作时 WebView 会短暂进入“未响应”。
+				go func(msg string) {
+					if js := a.opts.OnMessage(msg); js != "" {
+						a.EvalAsync(js)
+					}
+				}(msg)
 			}
 		}
 		if a.opts.HTML != "" {
@@ -452,6 +464,22 @@ func (a *App) tipText() string {
 	return t
 }
 
+// EvalAsync 把脚本交给 UI 线程执行。可从任意 goroutine 调用。
+//
+// WebView2 的 COM 对象应在创建它的 UI 线程上操作；这里只排队并把
+// 消息发给窗口，真正的 ExecuteScript 由 wndProc 在 UI 线程上执行。
+func (a *App) EvalAsync(script string) {
+	if a == nil || a.hwnd == 0 || a.evalCh == nil {
+		return
+	}
+	select {
+	case a.evalCh <- script:
+		procPostMessageW.Call(a.hwnd, uintptr(wmEval), 0, 0)
+	default:
+		logx.Log(logx.Warn, "界面回包队列已满，丢弃一次界面响应")
+	}
+}
+
 // SetStatus 更新托盘图标与提示。可从任意 goroutine 调用。
 func (a *App) SetStatus(s Status, tip string) {
 	a.statusMu.Lock()
@@ -652,6 +680,16 @@ func wndProc(hwnd, msg, wparam, lparam uintptr) uintptr {
 
 	case wmApplyStatus:
 		a.applyStatus()
+		return 0
+
+	case wmEval:
+		select {
+		case js := <-a.evalCh:
+			if a.chromium != nil {
+				a.chromium.Eval(js)
+			}
+		default:
+		}
 		return 0
 
 	case WM_CLOSE:

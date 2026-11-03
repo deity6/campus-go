@@ -33,7 +33,7 @@ import (
 var uiFS embed.FS
 
 // Version 显示在界面上。
-const Version = "4.3"
+const Version = "4.3.1"
 
 // Debug 返回平台信息，便于排查「在我这能跑」类问题。
 func Debug() string { return runtime.GOOS + "/" + runtime.GOARCH }
@@ -233,7 +233,7 @@ func (s *Service) saveConfig(params map[string]any) map[string]any {
 		return map[string]any{"ok": false, "error": "写入 config.json 失败: " + err.Error()}
 	}
 	s.w.UpdateConfig(cfg)
-	s.store.SetNetwork("", cfg.InWatchWindow(s.w.Now().Hour()), cfg.Complete())
+	s.store.SetNetwork("", cfg.InWatchWindow(s.w.Now().Hour()), cfg.Complete(), "")
 	return map[string]any{"ok": true, "config": s.configSnapshot()}
 }
 
@@ -259,7 +259,7 @@ func (s *Service) saveAccount(params map[string]any) map[string]any {
 		return map[string]any{"ok": false, "error": "写入 config.json 失败: " + err.Error()}
 	}
 	s.w.UpdateConfig(cfg)
-	s.store.SetNetwork("", cfg.InWatchWindow(s.w.Now().Hour()), cfg.Complete())
+	s.store.SetNetwork("", cfg.InWatchWindow(s.w.Now().Hour()), cfg.Complete(), "")
 	return map[string]any{"ok": true, "config": s.configSnapshot()}
 }
 

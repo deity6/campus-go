@@ -224,7 +224,7 @@ func (w *Watcher) tick() {
 
 	status := auth.CheckOnline(cfg)
 	w.setSrcIP(status.Source)
-	w.store.SetNetwork(status.Source, watching, cfg.Complete())
+	w.store.SetNetwork(status.Source, watching, cfg.Complete(), status.Medium)
 	w.store.SetBackoff(w.currentBackoff())
 
 	if status.Online {
@@ -582,7 +582,7 @@ func (w *Watcher) Check() (bool, string) {
 	} else {
 		w.setFromStatus(state.PhaseOffline, status)
 	}
-	w.store.SetNetwork(status.Source, cfg.InWatchWindow(time.Now().Hour()), cfg.Complete())
+	w.store.SetNetwork(status.Source, cfg.InWatchWindow(time.Now().Hour()), cfg.Complete(), status.Medium)
 	w.store.SetBackoff(w.currentBackoff())
 	w.store.AddEvent(kind, status.Detail)
 	return status.Online, status.Detail

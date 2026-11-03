@@ -52,6 +52,7 @@ type Store struct {
 	backoffUntil time.Time
 	configured   bool
 	session      SessionInfo
+	medium       string
 }
 
 // New 创建一个 Store。
@@ -130,11 +131,14 @@ func (s *Store) AddEvent(kind, text string) {
 }
 
 // SetNetwork 更新网络侧信息。
-func (s *Store) SetNetwork(srcIP string, watching bool, configured bool) {
+func (s *Store) SetNetwork(srcIP string, watching bool, configured bool, medium string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if srcIP != "" {
 		s.srcIP = srcIP
+	}
+	if medium != "" {
+		s.medium = medium
 	}
 	s.watching = watching
 	s.configured = configured
@@ -219,6 +223,7 @@ type NetworkView struct {
 	SrcIP         string `json:"src_ip"`
 	Watching      bool   `json:"watching"`
 	BackoffRemain int    `json:"backoff_remain"`
+	Medium        string `json:"medium"`
 }
 
 // Snapshot 返回 runtime 与 network 两段（供 /api/state 使用）。
@@ -260,6 +265,7 @@ func (s *Store) Snapshot() (RuntimeView, NetworkView) {
 		SrcIP:         s.srcIP,
 		Watching:      s.watching,
 		BackoffRemain: remain,
+		Medium:        s.medium,
 	}
 	return rt, nv
 }

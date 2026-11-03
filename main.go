@@ -95,7 +95,7 @@ func main() {
 	svc := api.New(w, store)
 
 	w.Start()
-	store.SetNetwork("", cfg.InWatchWindow(time.Now().Hour()), cfg.Complete())
+	store.SetNetwork("", cfg.InWatchWindow(time.Now().Hour()), cfg.Complete(), "")
 
 	if *flagHeadless {
 		logx.Log(logx.Info, "无界面模式运行中")

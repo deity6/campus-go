@@ -15,10 +15,11 @@
 ## Features
 
 - **Auto login / auto reconnect**: adaptive watch loop with an optional intensive window for known outage periods.
-- **Manual controls**: login now, disconnect (dual logout path), and check connection.
+- **Manual controls**: login now, disconnect (dual logout path), and check connection, with lightweight loading feedback.
+- **Gateway selection**: a built-in WZUT gateway plus a custom gateway option.
 - **Schedule planning**: daily auto-login hours plus an intensive window up to 1 hour, including cross-midnight.
 - **Privacy masking**: name, campus IP, MAC, and gateway are masked by default; preferences persist locally.
-- **Wired / Wi-Fi**: detects the source IP that can reach the auth gateway; no wired-only assumption.
+- **Wired / Wi-Fi**: detects the source IP that can reach the auth gateway; no wired-only assumption. The current medium is shown separately on the overview.
 - **Portable single exe**: Go + WebView2, no local HTTP port and no extra runtime.
 
 ![Schedule: daily hours and intensive window](docs/schedule.png)
@@ -26,7 +27,7 @@
 ## Privacy masking
 
 - The name is reduced to “X同学” before it reaches the UI.
-- Click the greeting name to cycle through `X同学 → 某同学 → 朋友 → X同学` with a character-scatter animation.
+- The greeting name can be clicked to cycle through `X同学 → 同学 → 朋友 → X同学`.
 - Campus IP, MAC, and gateway values are replaced by a shielded “已加敏” chip. Click the chip or shield icon to temporarily reveal them.
 - `Settings → 隐私脱敏` has global, name, and network-info switches; choices persist in `config.json`.
 
@@ -50,8 +51,8 @@ The UI and daemon run in one process and communicate through the WebView2 messag
 
 ## Usage
 
-Extract the archive and run `校园网认证.exe`, then fill in the gateway, account, and password on the “账号” page.
-Both wired access and passwordless campus Wi-Fi are supported; the tool selects the source IP that can reach the auth gateway.
+Extract the archive and run `校园网认证.exe`. On the “账号” page, choose the built-in WZUT gateway or switch to a custom gateway and enter the IP from the authentication page, then fill in account and password.
+Both wired access and passwordless campus Wi-Fi are supported; the tool selects the source IP that can reach the auth gateway and shows the current medium separately on the overview.
 
 ```
 校园网认证.exe   application

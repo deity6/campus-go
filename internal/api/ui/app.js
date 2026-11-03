@@ -178,7 +178,7 @@ function nameDisplayParts(level, base) {
     return [{ text: surname, kind: "name" }, { text: "同学", kind: "role" }];
   }
   if (level === 1) {
-    return [{ text: "某", kind: "name" }, { text: "同学", kind: "role" }];
+    return [{ text: "同学", kind: "role" }];
   }
   return [{ text: "朋友", kind: "alias" }];
 }
@@ -572,6 +572,26 @@ function greetingWord() {
   return "晚上好";
 }
 
+const ACCESS_ICONS = {
+  wifi: '<path d="M4 9.5a11 11 0 0 1 16 0" stroke-linecap="round"/><path d="M6.6 12.4a7.4 7.4 0 0 1 10.8 0" stroke-linecap="round"/><path d="M9.2 15.2a3.8 3.8 0 0 1 5.6 0" stroke-linecap="round"/><circle cx="12" cy="18.2" r="1.1" fill="currentColor" stroke="none"/>',
+  wired: '<path d="M8 7V5m8 2V5" stroke-linecap="round"/><rect x="4" y="7" width="16" height="7" rx="2.2"/><path d="M12 14v5" stroke-linecap="round"/>',
+};
+
+function renderAccessChip(medium) {
+  const wrap = document.getElementById("heroAccess");
+  const text = document.getElementById("heroAccessText");
+  const icon = wrap?.querySelector(".access-icon");
+  if (!wrap || !text || !icon) return;
+  if (medium !== "wifi" && medium !== "wired") {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  wrap.className = `hero-access ${medium}`;
+  text.textContent = medium === "wifi" ? "Wi-Fi" : "网线";
+  icon.innerHTML = ACCESS_ICONS[medium] || "";
+}
+
 function renderState(s) {
   lastState = s;
   const rt = s.runtime || {};
@@ -654,9 +674,12 @@ function renderState(s) {
 
   document.getElementById("heroState").textContent = text;
   document.getElementById("heroDetail").textContent = rt.hint || rt.detail || "—";
+  renderAccessChip(net.medium);
 
   // 环形：在线满圈，离线空圈，进行中转圈
   const ring = document.getElementById("ringFg");
+  const ringWrap = document.getElementById("heroRing");
+  const ringLabel = document.getElementById("ringLabel");
   const C = 326.7;
   // 首次渲染关闭过渡，避免从默认值滑向目标值产生"半圈绿"的错觉
   if (!ring.dataset.init) {
@@ -664,6 +687,8 @@ function renderState(s) {
     ring.dataset.init = "1";
     requestAnimationFrame(() => { ring.style.transition = ""; });
   }
+  const stateClass = online ? "online" : pending ? "working" : "offline";
+  if (ringWrap) ringWrap.dataset.state = stateClass;
   if (online) {
     ring.style.stroke = "var(--ok)";
     ring.style.strokeDashoffset = "0";
@@ -674,8 +699,10 @@ function renderState(s) {
     ring.style.stroke = "var(--danger)";
     ring.style.strokeDashoffset = String(C * 0.94);
   }
-  document.getElementById("ringLabel").textContent =
-    online ? "ONLINE" : pending ? "…" : "OFFLINE";
+  if (ringLabel) {
+    ringLabel.dataset.state = stateClass;
+    ringLabel.textContent = online ? "ONLINE" : pending ? "…" : "OFFLINE";
+  }
 
   // --- 指标 ---
   setSecret(document.getElementById("mSrcIp"), "ip", net.src_ip);
@@ -801,13 +828,23 @@ function startPolling() {
 
 /* ---------------- 动作 ---------------- */
 
+const SPINNER_SVG =
+  '<svg class="btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">' +
+  '<path d="M12 3a9 9 0 1 0 9 9" stroke-linecap="round"/></svg>';
+
+const minDelay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function busy(btn, on, label) {
+  const actionBtns = document.querySelectorAll(".actions .btn");
   if (on) {
     btn.dataset._old = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = label || "处理中…";
+    actionBtns.forEach((b) => { b.disabled = true; });
+    btn.classList.add("is-loading");
+    btn.innerHTML =
+      `${SPINNER_SVG}<span>${escapeHtml(label || "处理中…")}</span>`;
   } else {
-    btn.disabled = false;
+    actionBtns.forEach((b) => { b.disabled = false; });
+    btn.classList.remove("is-loading");
     if (btn.dataset._old) btn.innerHTML = btn.dataset._old;
   }
 }
@@ -816,7 +853,10 @@ document.getElementById("btnCheck").addEventListener("click", async (e) => {
   const b = e.currentTarget;
   busy(b, true, "检测中…");
   try {
-    const r = await api("/api/check", { method: "POST" });
+    const [r] = await Promise.all([
+      api("/api/check", { method: "POST" }),
+      minDelay(900),
+    ]);
     toast(r.online ? "当前在线" : "当前离线：" + r.detail, r.online ? "ok" : "");
     poll();
   } catch (err) {
@@ -849,7 +889,10 @@ document.getElementById("btnLogin").addEventListener("click", async (e) => {
   }
   busy(b, true, "认证中…");
   try {
-    const r = await api("/api/login", { method: "POST" });
+    const [r] = await Promise.all([
+      api("/api/login", { method: "POST" }),
+      minDelay(1200),
+    ]);
     if (r.need_config) {
       gotoAccountForm(r.error || "还没填账号和密码");
       return;
@@ -878,7 +921,10 @@ document.getElementById("btnLogout").addEventListener("click", async () => {
   const btn = document.getElementById("btnLogout");
   busy(btn, true);
   try {
-    const r = await api("/api/logout", { method: "POST" });
+    const [r] = await Promise.all([
+      api("/api/logout", { method: "POST" }),
+      minDelay(1100),
+    ]);
     if (r.ok) {
       toast(r.detail || "已注销认证", "ok");
     } else {

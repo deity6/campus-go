@@ -130,9 +130,50 @@ type Status struct {
 	Online bool
 	Detail string
 	Source string
+	// Medium 是当前接入方式（wifi / wired），未知时为空。
+	Medium string
 	// Situation 是给界面用的归类（ok / need_auth / no_cable / unreachable），
 	// Detail 保留技术细节供日志排查，两者分开。
 	Situation string
+}
+
+// InterfaceMedium 判断 sourceIP 所在网卡是有线还是 Wi-Fi。
+// Windows 的友好名通常已经能区分（以太网 / WLAN / Wi-Fi），
+// 这里不追求百分百准确，只用于界面提示；识别不了返回空。
+func InterfaceMedium(sourceIP string) string {
+	ip := net.ParseIP(strings.TrimSpace(sourceIP))
+	if ip == nil {
+		return ""
+	}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return ""
+	}
+	for _, ifc := range ifaces {
+		addrs, err := ifc.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, a := range addrs {
+			ipnet, ok := a.(*net.IPNet)
+			if !ok || !ipnet.IP.Equal(ip) {
+				continue
+			}
+			name := strings.ToLower(ifc.Name)
+			switch {
+			case strings.Contains(name, "wi-fi"),
+				strings.Contains(name, "wifi"),
+				strings.Contains(name, "wlan"),
+				strings.Contains(name, "wireless"),
+				strings.Contains(name, "802.11"),
+				strings.Contains(name, "无线"):
+				return "wifi"
+			default:
+				return "wired"
+			}
+		}
+	}
+	return ""
 }
 
 // PingAny 依次尝试多个目标，任意一个通即认为外网可达。
@@ -148,19 +189,20 @@ func PingAny(targets []string, timeoutMs int, sourceIP string) (string, bool) {
 // CheckOnline 双判据判断当前是否在线。
 func CheckOnline(cfg config.Config) Status {
 	src := DiscoverSourceIP(cfg.Gateway, cfg.EthGW)
+	medium := InterfaceMedium(src)
 
 	// 没有能到达认证网关的源 IP 就无法可靠判断校园网状态。
 	// 此时若用未绑定的 ping，在多网卡机器上可能走别的网络得到"在线"，
 	// 得出完全错误的结论 —— 宁可报"未连接校园网"，也不要报假的在线。
 	if src == "" {
 		return Status{Online: false, Situation: SituationNoCable,
-			Detail: "未找到能访问认证网关的本机地址（请先连接校园网有线或 Wi-Fi）"}
+			Detail: "未找到能访问认证网关的本机地址（请先连接校园网有线或 Wi-Fi）", Source: src}
 	}
 
 	// 1) ping 最快，通了直接算在线
 	if hit, ok := PingAny(cfg.PingTargets(), 1500, src); ok {
 		return Status{Online: true, Situation: SituationOK,
-			Detail: fmt.Sprintf("ping %s 通", hit), Source: src}
+			Detail: fmt.Sprintf("ping %s 通", hit), Source: src, Medium: medium}
 	}
 
 	// 2) ping 不通时，用应用层判据再确认：
@@ -175,19 +217,19 @@ func CheckOnline(cfg config.Config) Status {
 	if cfg.EthGW != "" && sameIPv4Subnet(src, cfg.EthGW) && Ping(cfg.EthGW, 1200, src) {
 		if n {
 			return Status{Online: true, Situation: SituationOK,
-				Detail: "ping 不通，但 Windows 连通性探测通过", Source: src}
+				Detail: "ping 不通，但 Windows 连通性探测通过", Source: src, Medium: medium}
 		}
 		return Status{Online: false, Situation: SituationNeedAuth,
-			Detail: fmt.Sprintf("网关 %s 通、外网不通（认证已失效）", cfg.EthGW), Source: src}
+			Detail: fmt.Sprintf("网关 %s 通、外网不通（认证已失效）", cfg.EthGW), Source: src, Medium: medium}
 	}
 
 	// 3) 网关也不通 —— 接入层面就没通
 	if n {
 		return Status{Online: true, Situation: SituationOK,
-			Detail: "网关 ping 不通，但外网 HTTP 可达", Source: src}
+			Detail: "网关 ping 不通，但外网 HTTP 可达", Source: src, Medium: medium}
 	}
 	return Status{Online: false, Situation: SituationUnreachable,
-		Detail: "外网与网关均不通", Source: src}
+		Detail: "外网与网关均不通", Source: src, Medium: medium}
 }
 
 // httpGetWithSource 发一个绑定源 IP 的 GET 请求。
