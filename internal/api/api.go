@@ -109,13 +109,6 @@ func (s *Service) Call(method string, params map[string]any) (any, error) {
 		if err := AutostartSet(enable); err != nil {
 			return map[string]any{"ok": false, "error": err.Error()}, nil
 		}
-		if enable {
-			logx.Log(logx.Info, "已开启开机自启")
-			s.store.AddEvent("info", "已开启开机自启")
-		} else {
-			logx.Log(logx.Info, "已关闭开机自启")
-			s.store.AddEvent("info", "已关闭开机自启")
-		}
 		return map[string]any{"ok": true, "enabled": enable}, nil
 	case "open.url":
 		if opener == nil {
@@ -183,7 +176,6 @@ func (s *Service) statePayload() map[string]any {
 
 func (s *Service) saveConfig(params map[string]any) map[string]any {
 	cfg := s.w.Config()
-	prevComplete := cfg.Complete()
 
 	if v, ok := toInt(params["watch_start_hour"]); ok {
 		cfg.WatchStartHour = clampInt(v, 0, 24)
@@ -235,14 +227,7 @@ func (s *Service) saveConfig(params map[string]any) map[string]any {
 		return map[string]any{"ok": false, "error": "写入 config.json 失败: " + err.Error()}
 	}
 	s.w.UpdateConfig(cfg)
-	logx.Log(logx.Info, "设置已保存：自动 %s／重点 %s（%ds，阈值 %d）／常态 %ds",
-		cfg.WatchText(), cfg.IntensiveText(), cfg.IntensiveInterval,
-		cfg.IntensiveThreshold, cfg.CheckInterval)
-	s.store.AddEvent("info", "设置已保存")
 	s.store.SetNetwork("", cfg.InWatchWindow(s.w.Now().Hour()), cfg.Complete())
-	if !prevComplete && cfg.Complete() {
-		s.store.AddEvent("ok", "账号配置已完整，自动认证可以工作")
-	}
 	return map[string]any{"ok": true, "config": s.configSnapshot()}
 }
 
@@ -268,8 +253,6 @@ func (s *Service) saveAccount(params map[string]any) map[string]any {
 		return map[string]any{"ok": false, "error": "写入 config.json 失败: " + err.Error()}
 	}
 	s.w.UpdateConfig(cfg)
-	logx.Log(logx.Info, "账号已更新：%s@%s", acc, gw)
-	s.store.AddEvent("info", fmt.Sprintf("账号已更新：%s@%s", acc, gw))
 	s.store.SetNetwork("", cfg.InWatchWindow(s.w.Now().Hour()), cfg.Complete())
 	return map[string]any{"ok": true, "config": s.configSnapshot()}
 }
