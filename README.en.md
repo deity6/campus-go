@@ -21,6 +21,8 @@
 - **Wired / Wi-Fi**: detects the source IP that can reach the auth gateway; no wired-only assumption.
 - **Portable single exe**: Go + WebView2, no local HTTP port and no extra runtime.
 
+![Schedule: daily hours and intensive window](docs/schedule.png)
+
 ## Privacy masking
 
 - The name is reduced to “X同学” before it reaches the UI.

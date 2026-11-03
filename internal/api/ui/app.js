@@ -224,8 +224,17 @@ function cycleNamePrivacy() {
     nameEditSuppressedClick = false;
     return;
   }
-  // 自定义文案时，点击不再改回默认；长按可以继续编辑或清空。
-  if (privacy.customName) return;
+  // 自定义文案在循环之外：点击后清掉自定义状态，回到三态循环。
+  if (privacy.customName) {
+    privacy.customName = "";
+    const next = (privacy.nameLevel + 1) % 3;
+    privacy.nameLevel = next;
+    animateNameChange();
+    updatePrivacySwitches();
+    saveCustomName();
+    savePrivacy();
+    return;
+  }
   const next = (privacy.nameLevel + 1) % 3;
   privacy.nameLevel = next;
   animateNameChange();
@@ -480,9 +489,11 @@ const GATEWAY_PRESETS = [
   { id: "custom", label: "自定义网关", value: "" },
 ];
 
+let gatewayCustomSelected = false;
+
 function syncGatewaySelect(value) {
   const sel = document.getElementById("selGateway");
-  if (!sel) return;
+  if (!sel || gatewayCustomSelected) return;
   const match = GATEWAY_PRESETS.find((p) => p.value && value === p.value);
   sel.value = match ? match.id : "custom";
 }
@@ -495,17 +506,22 @@ function syncGatewaySelect(value) {
   sel.addEventListener("change", () => {
     const inp = document.getElementById("inpGateway");
     const preset = GATEWAY_PRESETS.find((p) => p.id === sel.value);
+    gatewayCustomSelected = !preset?.value;
+    inp.dataset.touched = "1";
     if (preset?.value) {
       inp.value = preset.value;
-      inp.dataset.touched = "1";
+    } else {
+      inp.value = "";
     }
     inp.focus();
   });
 })();
 
 document.getElementById("inpGateway").addEventListener("input", (e) => {
+  const value = e.target.value.trim();
   e.target.dataset.touched = "1";
-  syncGatewaySelect(e.target.value.trim());
+  gatewayCustomSelected = !GATEWAY_PRESETS.some((p) => p.value && value === p.value);
+  syncGatewaySelect(value);
 });
 
 const PHASE_TEXT = {
@@ -681,12 +697,15 @@ function renderState(s) {
   // --- 账号表单预填 ---
   // 只在用户没动过表单时填充，否则每 2 秒轮询会把正在输入的内容冲掉
   const accTouched = document.getElementById("inpAccount").dataset.touched === "1";
-  if (!accTouched) {
-    const gi = document.getElementById("inpGateway");
-    const ai = document.getElementById("inpAccount");
-    const pi = document.getElementById("inpPassword");
+  const gi = document.getElementById("inpGateway");
+  const giTouched = gi.dataset.touched === "1";
+  if (!giTouched) {
     if (!gi.value && cfg.gateway) gi.value = cfg.gateway;
     syncGatewaySelect(gi.value.trim());
+  }
+  if (!accTouched) {
+    const ai = document.getElementById("inpAccount");
+    const pi = document.getElementById("inpPassword");
     if (!ai.value && cfg.account) ai.value = cfg.account;
     // 密码也回填：用户要求「保存后能看到、能改」。
     // 只在没被编辑过时填一次，避免 2 秒轮询把正在输入的内容冲掉。
