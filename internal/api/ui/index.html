@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>校园网认证</title>
+<link rel="stylesheet" href="/ui/app.css">
+</head>
+<body>
+
+<!-- 首帧骨架：WebView 加载页面本身只要几十毫秒，但这段过渡能让
+     窗口出现到数据就绪之间不留一片空白。数据一到就淡出移除。 -->
+<div id="boot">
+  <div class="boot-mark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M12 3v10m0 0a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" stroke-linecap="round"/>
+      <path d="M12 3a9 9 0 0 1 9 9M12 3a9 9 0 0 0-9 9" stroke-linecap="round" opacity=".45"/>
+    </svg>
+  </div>
+  <div class="boot-text">正在读取运行状态…</div>
+  <div class="boot-bar"><i></i></div>
+</div>
+
+<div class="app">
+
+  <!-- ============ 侧栏 ============ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M12 3v10m0 0a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" stroke-linecap="round"/>
+          <path d="M12 3a9 9 0 0 1 9 9M12 3a9 9 0 0 0-9 9" stroke-linecap="round" opacity=".45"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <strong>校园网认证</strong>
+        <span>Campus Auto Login</span>
+      </div>
+    </div>
+
+    <div class="side-status" id="sideStatus">
+      <span class="dot" id="sideDot"></span>
+      <div>
+        <div class="side-state" id="sideState">读取中</div>
+        <div class="side-sub" id="sideSub">—</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-view="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span>概览</span>
+      </button>
+      <button class="nav-item" data-view="schedule">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2" stroke-linecap="round"/></svg>
+        <span>自动认证时段</span>
+      </button>
+      <button class="nav-item" data-view="account">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-4.1 3.4-6.4 7.5-6.4s7.5 2.3 7.5 6.4" stroke-linecap="round"/></svg>
+        <span>账号</span>
+      </button>
+      <button class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3.05V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
+        <span>设置</span>
+      </button>
+      <button class="nav-item" data-view="logs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M8 11h8M8 15h5" stroke-linecap="round"/></svg>
+        <span>日志</span>
+      </button>
+    </nav>
+
+    <div class="side-foot">
+      <span id="footVersion">—</span>
+      <span class="sep"></span>
+      <span id="footUptime">—</span>
+    </div>
+  </aside>
+
+  <!-- ============ 主区 ============ -->
+  <main class="main">
+
+    <!-- ---------- 概览 ---------- -->
+    <section class="view active" id="view-overview">
+      <header class="page-head">
+        <h1>概览</h1>
+        <p class="page-sub">当前连接状态与快捷操作</p>
+      </header>
+
+      <div class="hero" id="heroCard">
+        <div class="hero-left">
+          <div class="hero-greet" id="heroGreet"></div>
+          <div class="hero-state" id="heroState">读取中</div>
+          <div class="hero-detail" id="heroDetail">正在获取状态…</div>
+        </div>
+        <div class="hero-ring" id="heroRing">
+          <svg viewBox="0 0 120 120">
+            <circle class="ring-bg" cx="60" cy="60" r="52"/>
+            <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52"/>
+          </svg>
+          <div class="ring-label" id="ringLabel">—</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-ghost" id="btnCheck">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-2.6-6.4" stroke-linecap="round"/><path d="M21 4v5h-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          检查连接
+        </button>
+        <button class="btn btn-primary" id="btnLogin">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 17l5-5-5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 12H3" stroke-linecap="round"/><path d="M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" stroke-linecap="round"/></svg>
+          立即认证
+        </button>
+        <button class="btn btn-quiet" id="btnLogout" title="断开当前校园网认证">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v9" stroke-linecap="round"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0" stroke-linecap="round"/></svg>
+          断开认证
+        </button>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-head">
+            <span class="metric-label">校园网 IP</span>
+            <button type="button" class="privacy-eye" data-net-toggle
+                    aria-label="显示或隐藏网络信息" title="显示或隐藏网络信息">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"></svg>
+            </button>
+          </div>
+          <span class="metric-value" id="mSrcIp" data-secret-kind="ip">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">本次认证成功</span>
+          <span class="metric-value" id="mLoginCount">0 次</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">上次认证</span>
+          <span class="metric-value" id="mLastLogin">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">自动认证</span>
+          <span class="metric-value" id="mWatching">—</span>
+        </div>
+      </div>
+
+      <div class="panel" id="sessionPanel" hidden>
+        <div class="panel-head">
+          <h2>本次连接</h2>
+          <div class="panel-tools">
+            <button type="button" class="privacy-eye" data-net-toggle
+                    aria-label="显示或隐藏网络信息" title="显示或隐藏网络信息">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"></svg>
+            </button>
+            <span class="badge" id="sessionBadge">已认证</span>
+          </div>
+        </div>
+        <dl class="kv">
+          <dt>校园网 IP</dt><dd id="svIp" data-secret-kind="ip">—</dd>
+          <dt>MAC 地址</dt><dd id="svMac" data-secret-kind="mac">—</dd>
+          <dt>上线时间</dt><dd id="svStart">—</dd>
+          <dt>已用时长</dt><dd id="svDuration">—</dd>
+          <dt>已用流量</dt><dd id="svFlow">—</dd>
+        </dl>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>最近事件</h2>
+        </div>
+        <ul class="events" id="eventList">
+          <li class="event-empty">暂无事件</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ---------- 自动认证时段 ---------- -->
+    <section class="view" id="view-schedule">
+      <header class="page-head">
+        <h1>自动认证时段</h1>
+        <p class="page-sub">在选定的时段内，掉线会自动重新认证；时段外只检测，不自动连接——你随时可以点「立即认证」手动连。</p>
+      </header>
+
+      <div class="panel schedule-panel">
+        <div class="panel-head">
+          <div>
+            <h2>每日时段</h2>
+            <p class="section-sub">设定自动照看的时间，其余时间安静待命</p>
+          </div>
+          <div class="schedule-now" id="scheduleNow">—</div>
+        </div>
+
+        <div class="schedule-readout">
+          <label class="time-field">
+            <span class="time-field-label">开始时间</span>
+            <span class="time-select-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round"/></svg>
+              <select id="selScheduleStart" aria-label="每日开始时间"></select>
+              <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m8 10 4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </label>
+          <div class="time-connector" aria-hidden="true"><span></span><i>→</i><span></span></div>
+          <label class="time-field">
+            <span class="time-field-label">结束时间</span>
+            <span class="time-select-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round"/></svg>
+              <select id="selScheduleEnd" aria-label="每日结束时间"></select>
+              <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m8 10 4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </label>
+          <div class="schedule-summary">
+            <strong id="roDuration">8 小时</strong>
+            <div class="readout-hint" id="roHint"></div>
+          </div>
+        </div>
+
+        <div class="timeline-wrap">
+          <div class="timeline" id="timeline">
+            <div class="tl-track"></div>
+            <div class="tl-range" id="tlRange">
+              <div class="tl-handle tl-handle-l" id="handleL" role="slider" tabindex="0" aria-label="开始时间"></div>
+              <div class="tl-handle tl-handle-r" id="handleR" role="slider" tabindex="0" aria-label="结束时间"></div>
+            </div>
+            <div class="tl-now" id="tlNow"></div>
+            <div class="tl-ticks" id="tlTicks"></div>
+          </div>
+        </div>
+
+        <div class="timeline-footer">
+          <div class="timeline-tips">拖动圆点微调，拖动色块整体移动；也可以直接选择时间。</div>
+          <button class="btn btn-primary btn-sm" id="btnSaveDaily">保存时段</button>
+        </div>
+      </div>
+
+      <div class="panel intensive-panel">
+        <div class="panel-head">
+          <div>
+            <h2>重点时段</h2>
+            <p class="section-sub">已知容易断网的时间，最多设置 1 小时</p>
+          </div>
+          <span class="badge" id="intensiveBadge">—</span>
+        </div>
+        <div class="intensive-summary">
+          <div class="intensive-metric">
+            <span>照看时间</span>
+            <strong id="intensiveWindow">—</strong>
+          </div>
+          <div class="intensive-metric">
+            <span>检测间隔</span>
+            <strong id="intensiveInterval">—</strong>
+          </div>
+          <div class="intensive-metric">
+            <span>重连判定</span>
+            <strong id="intensiveThreshold">—</strong>
+          </div>
+        </div>
+        <div class="intensive-footer">
+          <p class="field-hint">期间会更频繁地检测，确认断网后立即重连。</p>
+          <button class="btn btn-ghost btn-sm" id="btnEditIntensive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14.5 5.5 4 4M4 20l4.5-1 10-10a2.8 2.8 0 0 0-4-4l-10 10L4 20Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            调整重点时段
+          </button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>检测频率</h2></div>
+        <div class="field-row">
+          <div class="field">
+            <label>时段内间隔</label>
+            <div class="input-unit">
+              <input type="number" id="inpCheckInterval" min="10" max="3600" step="10">
+              <span>秒</span>
+            </div>
+            <p class="field-hint">自动认证时段内的检测周期，默认 60 秒。</p>
+          </div>
+          <div class="field">
+            <label>时段外间隔</label>
+            <div class="input-unit">
+              <input type="number" id="inpIdleInterval" min="60" max="86400" step="60">
+              <span>秒</span>
+            </div>
+            <p class="field-hint">时段外只做低频检测，默认 1800 秒（30 分钟）。</p>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="btn btn-primary" id="btnSaveSchedule">保存检测设置</button>
+          <button class="btn btn-quiet" id="btnResetSchedule">恢复默认</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 账号 ---------- -->
+    <section class="view" id="view-account">
+      <header class="page-head">
+        <h1>账号</h1>
+        <p class="page-sub">Dr.COM 认证网关与校园网账号。密码以明文保存在本机 config.json。</p>
+      </header>
+
+      <div class="panel">
+        <div class="panel-head"><h2>认证凭据</h2></div>
+        <div class="form">
+          <div class="field">
+            <label>认证网关 IP</label>
+            <input type="text" id="inpGateway" autocomplete="off" spellcheck="false" placeholder="例如 10.0.0.1">
+            <p class="field-hint">浏览器跳转认证页时地址栏里的那个 IP。</p>
+          </div>
+          <div class="field">
+            <label>账号 / 学号</label>
+            <input type="text" id="inpAccount" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="inpPassword">密码</label>
+            <div class="pwd-wrap">
+              <input type="password" id="inpPassword" autocomplete="new-password"
+                     spellcheck="false" placeholder="请输入密码">
+              <button type="button" class="pwd-eye" id="btnTogglePwd"
+                      aria-label="显示密码" title="显示密码">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <path d="M2.2 12S5.8 5.5 12 5.5 21.8 12 21.8 12 18.2 18.5 12 18.5 2.2 12 2.2 12Z" stroke-linejoin="round"/>
+                  <circle cx="12" cy="12" r="3.2"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="btn btn-primary" id="btnSaveAccount">保存</button>
+          <button class="btn btn-ghost" id="btnTestAccount">测试登录</button>
+        </div>
+        <div class="inline-msg" id="accountMsg"></div>
+      </div>
+
+      <div class="panel panel-muted">
+        <div class="panel-head">
+          <h2>当前生效</h2>
+          <button type="button" class="privacy-eye" data-net-toggle
+                  aria-label="显示或隐藏网关地址" title="显示或隐藏网关地址">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"></svg>
+          </button>
+        </div>
+        <dl class="kv">
+          <dt>网关</dt><dd id="kvGateway" data-secret-kind="ip">—</dd>
+          <dt>账号</dt><dd id="kvAccount">—</dd>
+          <dt>密码</dt><dd id="kvPassword">—</dd>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ---------- 设置 ---------- -->
+    <section class="view" id="view-settings">
+      <header class="page-head">
+        <h1>设置</h1>
+        <p class="page-sub">启动方式与运行选项</p>
+      </header>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>隐私脱敏</h2>
+            <p class="section-sub">选择会被记住，重启后依然生效</p>
+          </div>
+        </div>
+        <div class="switch-row">
+          <div>
+            <div class="switch-title">全局加敏</div>
+            <p class="field-hint">一键把姓名和网络信息都切到脱敏状态</p>
+          </div>
+          <button class="switch" id="switchPrivacyGlobal" role="switch" aria-checked="true">
+            <span class="switch-knob"></span>
+          </button>
+        </div>
+        <div class="switch-row" style="margin-top:20px">
+          <div>
+            <div class="switch-title">姓名加敏</div>
+            <p class="field-hint">开启后隐藏姓氏；也可直接点击首页称呼切换</p>
+          </div>
+          <button class="switch" id="switchPrivacyName" role="switch" aria-checked="false">
+            <span class="switch-knob"></span>
+          </button>
+        </div>
+        <div class="switch-row" style="margin-top:20px">
+          <div>
+            <div class="switch-title">网络信息加敏</div>
+            <p class="field-hint">IP、MAC 和网关默认打码，旁边的小眼睛可临时查看</p>
+          </div>
+          <button class="switch" id="switchPrivacyNet" role="switch" aria-checked="true">
+            <span class="switch-knob"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>开机自启</h2></div>
+        <div class="switch-row">
+          <div>
+            <div class="switch-title">登录时自动运行</div>
+            <p class="field-hint" id="autostartTarget">—</p>
+          </div>
+          <button class="switch" id="switchAutostart" role="switch" aria-checked="false">
+            <span class="switch-knob"></span>
+          </button>
+        </div>
+
+        <div class="switch-row" style="margin-top:22px">
+          <div>
+            <div class="switch-title">使用引导</div>
+            <p class="field-hint">取消后，下次启动会再播放一遍</p>
+          </div>
+          <button class="switch" id="switchTour" role="switch" aria-checked="true">
+            <span class="switch-knob"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>关于</h2></div>
+        <dl class="kv">
+          <dt>版本</dt><dd id="kvVersion">—</dd>
+          <dt>检测目标</dt><dd id="kvPing">—</dd>
+          <dt>守护启动于</dt><dd id="kvStartedAt">—</dd>
+          <dt>已运行</dt><dd id="kvUptime">—</dd>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ---------- 日志 ---------- -->
+    <section class="view" id="view-logs">
+      <header class="page-head">
+        <h1>日志</h1>
+        <p class="page-sub">最近 200 行运行记录</p>
+      </header>
+      <div class="panel panel-log">
+        <div class="log-toolbar">
+          <button class="btn btn-quiet btn-sm" id="btnRefreshLog">刷新</button>
+          <label class="auto-refresh">
+            <input type="checkbox" id="chkAutoLog" checked>
+            <span class="auto-refresh-track" aria-hidden="true"></span>
+            <span>自动刷新</span>
+          </label>
+        </div>
+        <pre class="log" id="logBox">加载中…</pre>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="modal-mask" id="modalMask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-icon" id="modalIcon"></div>
+    <h3 class="modal-title" id="modalTitle">确认</h3>
+    <p class="modal-body" id="modalBody"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modalCancel">取消</button>
+      <button class="btn btn-primary" id="modalOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="intensiveMask" hidden>
+  <div class="modal intensive-modal" role="dialog" aria-modal="true" aria-labelledby="intensiveTitle">
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2" stroke-linecap="round"/></svg>
+    </div>
+    <h3 class="modal-title" id="intensiveTitle">调整重点时段</h3>
+    <p class="modal-body">在容易断网的时间里提高检测频率，确认断网后立即重连。支持跨零点，最长 1 小时。</p>
+    <div class="intensive-enable">
+      <div>
+        <div class="switch-title">启用重点时段</div>
+        <p class="field-hint">关闭后按常规频率检测</p>
+      </div>
+      <button class="switch" id="switchIntensive" role="switch" aria-checked="true">
+        <span class="switch-knob"></span>
+      </button>
+    </div>
+    <div class="intensive-time-row" id="intensiveTimeRow">
+      <label class="field">
+        <span>开始时间</span>
+        <input type="time" id="inpIntensiveStart" step="300" value="03:50">
+      </label>
+      <span class="intensive-time-arrow">→</span>
+      <label class="field">
+        <span>结束时间</span>
+        <input type="time" id="inpIntensiveEnd" step="300" value="04:15">
+      </label>
+    </div>
+    <div class="duration-presets" id="durationPresets">
+      <span>快速设置</span>
+      <button type="button" data-minutes="15">15 分钟</button>
+      <button type="button" data-minutes="25">25 分钟</button>
+      <button type="button" data-minutes="30">30 分钟</button>
+      <button type="button" data-minutes="60">1 小时</button>
+    </div>
+    <div class="intensive-duration" id="intensiveDuration">持续 25 分钟</div>
+    <div class="inline-msg err" id="intensiveError"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="intensiveCancel">取消</button>
+      <button class="btn btn-primary" id="intensiveSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="tour" id="tour" hidden>
+  <div class="tour-hole" id="tourHole"></div>
+  <div class="tour-tip" id="tourTip">
+    <div class="tour-step" id="tourStep"></div>
+    <h4 class="tour-title" id="tourTitle"></h4>
+    <p class="tour-text" id="tourText"></p>
+    <div class="tour-actions">
+      <button class="btn btn-ghost btn-sm" id="tourSkip">跳过</button>
+      <button class="btn btn-primary btn-sm" id="tourNext">下一步</button>
+    </div>
+  </div>
+</div>
+
+<script src="/ui/app.js"></script>
+</body>
+</html>

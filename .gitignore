@@ -1,0 +1,12 @@
+# 构建产物
+dist/
+*.exe
+*.syso
+_testrun/
+_va/
+
+# 本地状态（含明文密码，绝不入库）
+config.json
+runtime.json
+autologin.log
+autologin.log.1
