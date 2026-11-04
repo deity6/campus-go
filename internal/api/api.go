@@ -26,14 +26,12 @@ import (
 	"campusautologin/internal/config"
 	"campusautologin/internal/logx"
 	"campusautologin/internal/state"
+	"campusautologin/internal/version"
 	"campusautologin/internal/watcher"
 )
 
 //go:embed all:ui
 var uiFS embed.FS
-
-// Version 显示在界面上。
-const Version = "4.3.1"
 
 // Debug 返回平台信息，便于排查「在我这能跑」类问题。
 func Debug() string { return runtime.GOOS + "/" + runtime.GOARCH }
@@ -171,7 +169,7 @@ func (s *Service) statePayload() map[string]any {
 		"config":  s.configSnapshot(),
 		"network": nv,
 		"session": s.store.Session(),
-		"version": Version,
+		"version": version.Number(),
 	}
 }
 

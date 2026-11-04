@@ -21,6 +21,7 @@ import (
 	"campusautologin/internal/config"
 	"campusautologin/internal/logx"
 	"campusautologin/internal/state"
+	"campusautologin/internal/version"
 	"campusautologin/internal/watcher"
 )
 
@@ -59,7 +60,7 @@ func main() {
 	flag.Parse()
 
 	if *flagVersion {
-		fmt.Printf("校园网自动认证 v%s (%s)\n", api.Version, api.Debug())
+		fmt.Printf("校园网自动认证 v%s (%s)\n", version.Number(), api.Debug())
 		return
 	}
 
@@ -67,7 +68,7 @@ func main() {
 
 	logx.Init(filepath.Join(dir, "autologin.log"))
 	logx.SetThrottleWindow("srcip", 30*time.Second)
-	logx.Log(logx.Info, "===== 启动 v%s，目录 %s =====", api.Version, dir)
+	logx.Log(logx.Info, "===== 启动 v%s，目录 %s =====", version.Number(), dir)
 
 	// 单实例判定要尽早（放在建立任何状态之前）
 	if handledByExisting() {
