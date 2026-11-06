@@ -186,6 +186,8 @@ function nameDisplayParts(level, base) {
 function renderName({ animate = false } = {}) {
   const greet = document.getElementById("heroGreet");
   if (!greet || privacy.nameAnimating || nameEditing) return;
+  const word = greetingWord();
+  greet.dataset.greetWord = word;
   const base = demoNameActive ? "青同学" : (privacy.customName || privacy.baseName);
   if (!base) {
     greet.dataset.line = "";
@@ -193,7 +195,7 @@ function renderName({ animate = false } = {}) {
     greet.innerHTML = "";
     return;
   }
-  const line = `${greetingWord()}|${base}|${privacy.nameLevel}|${privacy.customName ? "custom" : demoNameActive ? "demo" : "real"}`;
+  const line = `${word}|${base}|${privacy.nameLevel}|${privacy.customName ? "custom" : demoNameActive ? "demo" : "real"}`;
   greet.dataset.line = line;
 
   const parts = nameDisplayParts(privacy.nameLevel, base);
@@ -641,6 +643,11 @@ function renderState(s) {
       }
     } else if (!demoNameActive && privacy.baseName) {
       privacy.baseName = "";
+      renderName();
+    }
+    // 时间跨过早上/中午/下午/晚上/深夜边界时，状态没变也要刷新问候语。
+    // 轮询每 2 秒一次，最多晚 2 秒更新，不需要额外定时器。
+    if (greet.dataset.greetWord !== greetingWord()) {
       renderName();
     }
   }
