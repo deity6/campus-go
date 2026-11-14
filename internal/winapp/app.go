@@ -260,6 +260,9 @@ func (a *App) Run() error {
 
 	if !a.opts.StartHidden {
 		a.Show()
+	} else if a.chromium != nil {
+		// 开机自启时直接停在托盘：别让 WebView2 在屏幕外继续渲染。
+		a.chromium.Hide()
 	}
 
 	// ---- 消息循环 ----
@@ -308,6 +311,11 @@ func (a *App) doShow() {
 	if a.hwnd == 0 {
 		return
 	}
+	// 先把 WebView2 恢复成可见，再挪回屏幕，避免露白。
+	if a.chromium != nil {
+		a.chromium.Show()
+		a.chromium.Eval("window.setAppHidden && window.setAppHidden(false)")
+	}
 	// 切回普通窗口：工具窗（WS_EX_TOOLWINDOW）只有关闭按钮、没有最小化/最大化，
 	// 但预热时又必须用它把窗口藏出任务栏。所以按需切换。
 	a.setToolWindow(false)
@@ -327,8 +335,10 @@ func (a *App) doShow() {
 	a.visible.Store(true)
 }
 
-// 隐藏到「屏幕外」而不是 SW_HIDE：
-// 保持窗口可见状态，WebView2 的渲染管线就不会停，下次显示是纯合成，零等待。
+// 隐藏到「屏幕外」，同时把 WebView2 控制器设为不可见。
+//
+// 只挪窗口、不隐藏 WebView2 的话，页面里的 CSS 动画仍会持续合成；
+// 缩到托盘后 GPU 进程会一直有 10%~20% 的占用，笔记本上很浪费电。
 func (a *App) doHide() {
 	if a.hwnd == 0 {
 		return
@@ -336,6 +346,10 @@ func (a *App) doHide() {
 	off := offscreenPos()
 	procSetWindowPos.Call(a.hwnd, 0, off, off, 0, 0,
 		SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE)
+	if a.chromium != nil {
+		a.chromium.Eval("window.setAppHidden && window.setAppHidden(true)")
+		a.chromium.Hide()
+	}
 	// 藏起来时切回工具窗，避免任务栏留一个空按钮
 	a.setToolWindow(true)
 	a.visible.Store(false)

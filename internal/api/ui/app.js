@@ -814,8 +814,10 @@ function escapeHtml(s) {
 /* ---------------- 轮询 ---------------- */
 
 let pollTimer = null;
+let appHidden = false;
 
 async function poll() {
+  if (appHidden) return;
   try {
     const s = await api("/api/state");
     renderState(s);
@@ -826,6 +828,14 @@ async function poll() {
     document.getElementById("sideDot").className = "dot offline";
   }
 }
+
+// Go 侧在窗口缩到托盘/重新显示时调用。
+// 隐藏时暂停轮询和 CSS 动画，避免后台持续渲染。
+window.setAppHidden = function (hidden) {
+  appHidden = !!hidden;
+  document.documentElement.classList.toggle("app-hidden", appHidden);
+  if (!appHidden) poll();
+};
 
 function startPolling() {
   poll();

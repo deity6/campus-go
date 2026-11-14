@@ -39,13 +39,6 @@
   --dur: .16s;
 }
 
-/* 让角度可以参与动画（Chromium 85+ 支持 @property） */
-@property --glow-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -241,18 +234,19 @@ input { user-select: text; }
     radial-gradient(560px 140px at 8% -10%, rgba(15, 164, 122, .07), transparent 70%),
     linear-gradient(180deg, rgba(255, 255, 255, .9), transparent 40%);
 }
-/* 沿卡片边缘跑一圈高光。用 conic-gradient 画弧、mask 挖空中间，
-   只剩 1.5px 边框在发光；离线时整层隐藏。 */
+/* 沿卡片边缘留一段静态高光。以前让 conic-gradient 的角度持续旋转，
+   等于每帧重绘整张卡片背景，隐藏到托盘后也停不下来，GPU 占用明显。
+   现在只保留静态弧线，动态感交给文字和状态环，成本低得多。 */
 .hero::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 1.5px;
-  background: conic-gradient(from var(--glow-angle),
+  background: conic-gradient(from 285deg,
     transparent 0deg, transparent 232deg,
-    rgba(20, 184, 166, .85) 284deg,
-    rgba(37, 99, 235, .95) 318deg,
+    rgba(20, 184, 166, .78) 284deg,
+    rgba(37, 99, 235, .9) 318deg,
     transparent 352deg);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -260,15 +254,11 @@ input { user-select: text; }
   mask-composite: exclude;
   opacity: 0;
   transition: opacity .6s var(--ease);
-  animation: glowSpin 4.6s linear infinite;
   pointer-events: none;
 }
-.hero.is-online::after { opacity: 1; }
-@keyframes glowSpin {
-  to { --glow-angle: 360deg; }
-}
+.hero.is-online::after { opacity: .9; }
 @media (prefers-reduced-motion: reduce) {
-  .hero::after { animation: none; opacity: 0 !important; }
+  .hero::after { opacity: 0 !important; }
 }
 
 .hero.is-offline { border-color: #f3dcdd; }
@@ -342,9 +332,6 @@ input { user-select: text; }
 
 .hero-ring { position: relative; width: 88px; height: 88px; flex: 0 0 auto; }
 .hero-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.hero-ring[data-state="online"] { animation: ringGlow 2.6s ease-in-out infinite; }
-.hero-ring[data-state="offline"] { animation: ringGlowOffline 2.6s ease-in-out infinite; }
-.hero-ring[data-state="working"] { animation: ringGlowWorking 1.4s ease-in-out infinite; }
 .ring-bg { fill: none; stroke: var(--bg-3); stroke-width: 5; }
 .ring-fg {
   fill: none; stroke: var(--tx-3); stroke-width: 5;
@@ -380,24 +367,15 @@ input { user-select: text; }
   to   { background-position: 220% 50%; }
 }
 @keyframes ringBreathe { 50% { opacity: .45; } }
-@keyframes ringGlow {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(15, 164, 122, 0)); }
-  50% { filter: drop-shadow(0 0 8px rgba(15, 164, 122, .16)); }
-}
-@keyframes ringGlowOffline {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(220, 75, 82, 0)); }
-  50% { filter: drop-shadow(0 0 8px rgba(220, 75, 82, .14)); }
-}
-@keyframes ringGlowWorking {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(217, 131, 36, 0)); }
-  50% { filter: drop-shadow(0 0 8px rgba(217, 131, 36, .16)); }
-}
 @media (prefers-reduced-motion: reduce) {
-  .hero-ring[data-state="online"],
-  .hero-ring[data-state="offline"],
-  .hero-ring[data-state="working"],
   .ring-label[data-state="online"],
   .ring-label[data-state="working"] { animation: none; }
+}
+/* 窗口缩到托盘后暂停全部动画，避免 WebView2 在不可见时继续合成。 */
+html.app-hidden *,
+html.app-hidden *::before,
+html.app-hidden *::after {
+  animation-play-state: paused !important;
 }
 
 /* ---------- 按钮：立体感 ---------- */
